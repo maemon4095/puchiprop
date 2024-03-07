@@ -22,14 +22,14 @@ pub mod __internal;
 pub mod defaults;
 
 use rand::{RngCore, SeedableRng};
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
 pub trait TestCaseGenerator {
-    type TestCase;
+    type TestCase: Debug;
     fn generate(&self, rng: &mut dyn RngCore) -> Self::TestCase;
 }
 
-impl<T, F: for<'a> Fn(&'a mut (dyn RngCore + 'a)) -> T> TestCaseGenerator for F {
+impl<T: Debug, F: for<'a> Fn(&'a mut (dyn RngCore + 'a)) -> T> TestCaseGenerator for F {
     type TestCase = T;
 
     fn generate(&self, rng: &mut dyn RngCore) -> Self::TestCase {
@@ -56,6 +56,7 @@ pub trait TestPlan<T>: Iterator<Item = T> {
 
 pub trait TestPlanStateReporter {
     fn report(&mut self, name: &'static str, value: &dyn Display);
+    fn report_dbg(&mut self, name: &'static str, value: &dyn Debug);
 }
 
 pub mod macros {

@@ -44,7 +44,7 @@ impl TestPlanner for DefaultTestPlanner {
             .take(options.sample_count.unwrap_or(100));
         DefaultTestPlan {
             seed,
-            current_case_index: skip,
+            executed_test_count: skip,
             iterator,
         }
     }
@@ -52,14 +52,14 @@ impl TestPlanner for DefaultTestPlanner {
 
 struct DefaultTestPlan<I: Iterator> {
     seed: u64,
-    current_case_index: usize,
+    executed_test_count: usize,
     iterator: I,
 }
 
 impl<I: Iterator<Item = T>, T> TestPlan<T> for DefaultTestPlan<I> {
     fn report_state(&self, f: &mut dyn TestPlanStateReporter) {
         f.report("seed", &self.seed);
-        f.report("skip", &(self.current_case_index - 1));
+        f.report("index", &(self.executed_test_count - 1));
     }
 }
 
@@ -70,7 +70,7 @@ impl<I: Iterator> Iterator for DefaultTestPlan<I> {
         let Some(e) = self.iterator.next() else {
             return None;
         };
-        self.current_case_index += 1;
+        self.executed_test_count += 1;
         Some(e)
     }
 }
