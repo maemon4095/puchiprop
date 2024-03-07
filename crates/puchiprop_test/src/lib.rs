@@ -13,4 +13,10 @@ mod tests {
         let result = add(a, b);
         assert!(result < 150)
     }
+
+    #[prop_test(|_| A)]
+    fn cannot_clone(_cannot_clone: A) {}
+
+    #[derive(Debug)]
+    struct A;
 }

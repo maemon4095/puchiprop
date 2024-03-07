@@ -8,8 +8,7 @@ use quote::{format_ident, quote, ToTokens};
 static DEFAULT_PLANNER: &'static str = "::puchiprop::defaults::DefaultTestPlanner::default()";
 static INTERNAL_REPORT_ERROR: &'static str = "::puchiprop::__internal::report_error";
 static INTERNAL_ASSERT_CLOSURE_TYPE: &'static str = "::puchiprop::__internal::assert_closure_type";
-static INTERNAL_TRY_CLONE_INNER: &'static str = "::puchiprop::__internal::TryCloneInner";
-static INTERNAL_TRY_CLONE_WRAP: &'static str = "::puchiprop::__internal::TryCloneWrap";
+static INTERNAL_TRY_CLONE_WRAP: &'static str = "::puchiprop::__internal::try_clone_wrap";
 
 pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args: PropetyTestArgs = match syn::parse2(attr) {
@@ -58,14 +57,11 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let report_error: TokenStream = INTERNAL_REPORT_ERROR.parse().unwrap();
 
-    let try_clone_inner: TokenStream = INTERNAL_TRY_CLONE_INNER.parse().unwrap();
     let try_clone_wrap: TokenStream = INTERNAL_TRY_CLONE_WRAP.parse().unwrap();
 
     quote! {
         #[test]
         #vis fn #ident () {
-            use #try_clone_inner;
-
             #tester
 
             let tester = #ident;

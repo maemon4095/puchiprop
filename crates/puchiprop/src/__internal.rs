@@ -1,6 +1,6 @@
 mod try_clone_inner;
 
-pub use try_clone_inner::{TryCloneInner, TryCloneWrap};
+pub use try_clone_inner::try_clone_wrap;
 
 use super::*;
 use std::fmt::Debug;
