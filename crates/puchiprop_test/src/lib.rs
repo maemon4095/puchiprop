@@ -9,6 +9,7 @@ mod tests {
     use rand::Rng;
 
     #[prop_test(|rng| (rng.gen_range(0..100), rng.gen_range(0..100)), options = { seed: 8274166976581544106, skip: 6 })]
+    #[should_panic]
     fn it_works(a: usize, b: usize) {
         let result = add(a, b);
         assert!(result < 150)

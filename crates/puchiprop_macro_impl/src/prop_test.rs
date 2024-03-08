@@ -11,8 +11,8 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
         Err(e) => return e.into_compile_error(),
     };
 
-    let tester: syn::ItemFn = match syn::parse2(item) {
-        Ok(e) => e,
+    let (tester, attrs) = match syn::parse2(item) {
+        Ok(e) => separate_testing_attr(e),
         Err(e) => return e.into_compile_error(),
     };
 
@@ -44,7 +44,7 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let generator = {
         let gen = &args.generator;
-        if need_type_assertion(gen) {
+        if needs_type_assertion(gen) {
             quote! {
                 #closure_type_assertion(#gen)
             }
@@ -57,6 +57,7 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     quote! {
         #[test]
+        #(#attrs)*
         #vis fn #ident () {
             #tester
 
@@ -88,19 +89,37 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
     }
 }
 
-fn need_type_assertion(expr: &syn::Expr) -> bool {
+fn needs_type_assertion(expr: &syn::Expr) -> bool {
     match expr {
         syn::Expr::Block(e) => {
             if let Some(syn::Stmt::Expr(e, None)) = e.block.stmts.last() {
-                need_type_assertion(e)
+                needs_type_assertion(e)
             } else {
                 false
             }
         }
         syn::Expr::Closure(_) => true,
-        syn::Expr::Paren(e) => need_type_assertion(&e.expr),
+        syn::Expr::Paren(e) => needs_type_assertion(&e.expr),
         _ => false,
     }
+}
+
+fn separate_testing_attr(mut itemfn: syn::ItemFn) -> (syn::ItemFn, Vec<syn::Attribute>) {
+    let mut idx = 0;
+    let mut attrs = itemfn.attrs;
+    let mut removed_attrs = Vec::new();
+    while idx < attrs.len() {
+        let ident = attrs[idx].path().get_ident();
+        match ident {
+            Some(e) if e == "should_panic" => {
+                removed_attrs.push(attrs.swap_remove(idx));
+            }
+            _ => idx += 1,
+        }
+    }
+    itemfn.attrs = attrs;
+
+    (itemfn, removed_attrs)
 }
 
 #[cfg(test)]
@@ -144,6 +163,19 @@ mod test {
         let attr = quote! { array(|r| r.gen(), 0..10), options = { seed: 0, skip: 1 } };
         let item = quote! { fn test(x: usize) { }};
 
+        let result = prop_test(attr.to_token_stream(), item.to_token_stream());
+
+        let pretty = prettyplease::unparse(&syn::parse_file(&result.to_string()).unwrap());
+        println!("{}", pretty);
+    }
+
+    #[test]
+    fn should_panic() {
+        let attr = quote! { array(|r| r.gen(), 0..10) };
+        let item = quote! {
+            #[should_panic]
+            fn test(x: usize) { }
+        };
         let result = prop_test(attr.to_token_stream(), item.to_token_stream());
 
         let pretty = prettyplease::unparse(&syn::parse_file(&result.to_string()).unwrap());
