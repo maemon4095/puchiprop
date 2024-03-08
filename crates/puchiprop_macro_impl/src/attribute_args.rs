@@ -1,4 +1,7 @@
-use syn::{parse::Parse, punctuated::Punctuated};
+use syn::{
+    parse::{discouraged::Speculative, Parse},
+    punctuated::Punctuated,
+};
 
 pub enum AttributeArg<T: Parse> {
     Positional(T),
@@ -24,8 +27,12 @@ impl<T: Parse> Parse for AttributeNamedArg<T> {
 
 impl<T: Parse> Parse for AttributeArg<T> {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        match input.parse() {
-            Ok(e) => return Ok(Self::Named(e)),
+        let fork = input.fork();
+        match fork.parse() {
+            Ok(e) => {
+                input.advance_to(&fork);
+                return Ok(Self::Named(e));
+            }
             Err(_) => (),
         }
 
