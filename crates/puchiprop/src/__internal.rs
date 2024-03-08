@@ -1,7 +1,3 @@
-mod try_clone_inner;
-
-pub use try_clone_inner::try_clone_wrap;
-
 use super::*;
 use std::fmt::Debug;
 
@@ -36,16 +32,12 @@ where
     }
 }
 
-pub fn report_error<T: Debug>(_testname: &str, test_case: Option<T>, plan: &impl TestPlan<T>) {
+pub fn report_error<T: Debug>(_testname: &str, test_case: &str, plan: &impl TestPlan<T>) {
     let mut r = DefaultTestPlanStateReporter::default();
     plan.report_state(&mut r);
 
     eprintln!("---- test case ----");
-    if let Some(arg) = &test_case {
-        eprintln!("{:?}", &arg);
-    } else {
-        eprintln!("the case could not be displayed");
-    }
+    eprintln!("{}", test_case);
 
     eprintln!("---- test plan state ----");
     eprintln!("{}", r);

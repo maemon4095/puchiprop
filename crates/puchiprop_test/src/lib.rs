@@ -14,6 +14,26 @@ mod tests {
         assert!(result < 150)
     }
 
+    fn array<G>(
+        g: G,
+        len: impl rand::distributions::uniform::SampleRange<usize> + Clone,
+    ) -> impl TestCaseGenerator<TestCase = Vec<G::TestCase>>
+    where
+        G: TestCaseGenerator,
+    {
+        move |rng: &mut dyn rand::RngCore| {
+            let len = rng.gen_range(len.clone());
+            let mut buf = Vec::with_capacity(len);
+            for _ in 0..len {
+                buf.push(g.generate(rng));
+            }
+            buf
+        }
+    }
+
+    #[prop_test(array(|r: &mut dyn rand::RngCore| r.gen(), 0..10))]
+    fn takes_array(_items: Vec<usize>) {}
+
     #[prop_test(|_| A)]
     fn cannot_clone(_cannot_clone: A) {}
 

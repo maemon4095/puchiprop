@@ -8,7 +8,6 @@ use quote::{format_ident, quote, ToTokens};
 static DEFAULT_PLANNER: &'static str = "::puchiprop::defaults::DefaultTestPlanner::default()";
 static INTERNAL_REPORT_ERROR: &'static str = "::puchiprop::__internal::report_error";
 static INTERNAL_ASSERT_CLOSURE_TYPE: &'static str = "::puchiprop::__internal::assert_closure_type";
-static INTERNAL_TRY_CLONE_WRAP: &'static str = "::puchiprop::__internal::try_clone_wrap";
 
 pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args: PropetyTestArgs = match syn::parse2(attr) {
@@ -60,8 +59,6 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let report_error: TokenStream = INTERNAL_REPORT_ERROR.parse().unwrap();
 
-    let try_clone_wrap: TokenStream = INTERNAL_TRY_CLONE_WRAP.parse().unwrap();
-
     quote! {
         #[test]
         #vis fn #ident () {
@@ -76,19 +73,19 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             let generator = #generator;
             let mut plan = planner.plan(&options, &generator);
-            let mut current_case = None;
+            let mut current_case = String::new();
             let mut planref = ::std::panic::AssertUnwindSafe(&mut plan);
             let mut current_case_ref = ::std::panic::AssertUnwindSafe(&mut current_case);
             let result = ::std::panic::catch_unwind(move || {
                 while let ::std::option::Option::Some(arg) = planref.next() {
-                    **current_case_ref = (#try_clone_wrap(&arg)).try_clone_inner();
+                    **current_case_ref = ::std::format!("{:?}", arg);
                     let #tester_args = arg;
                     tester #tester_args;
                 }
             });
 
             if let ::std::result::Result::Err(err) = result {
-                #report_error(#ident_str, current_case, &plan);
+                #report_error(#ident_str, &current_case, &plan);
                 ::std::panic::resume_unwind(err);
             }
         }
