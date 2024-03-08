@@ -181,4 +181,14 @@ mod test {
         let pretty = prettyplease::unparse(&syn::parse_file(&result.to_string()).unwrap());
         println!("{}", pretty);
     }
+
+    #[test]
+    fn planner() {
+        let attr = quote! { array(|r| r.gen(), 0..10), planner = create_planner() };
+        let item = quote! { fn test(x: usize) { } };
+        let result = prop_test(attr.to_token_stream(), item.to_token_stream());
+
+        let pretty = prettyplease::unparse(&syn::parse_file(&result.to_string()).unwrap());
+        println!("{}", pretty);
+    }
 }
