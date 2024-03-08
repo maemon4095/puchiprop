@@ -5,7 +5,12 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["std"]
+std = ["dep:puchiprop_std"]
+
 [dependencies]
 puchiprop_macro = { path = "../puchiprop_macro" }
 puchiprop_core = { path = "../puchiprop_core" }
-rand = { version = "0.8.5", features = ["small_rng"] }
+puchiprop_std = { path = "../puchiprop_std", optional = true }
+rand = { workspace = true }

@@ -1,5 +1,5 @@
-use super::*;
-use std::fmt::Debug;
+use puchiprop_core::*;
+use std::fmt::{Debug, Display};
 
 #[derive(Default)]
 struct DefaultTestPlanStateReporter(Vec<(&'static str, String)>);

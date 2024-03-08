@@ -24,7 +24,8 @@ pub mod helper;
 
 pub use puchiprop_core::*;
 
-use std::fmt::{Debug, Display};
+#[cfg(feature = "std")]
+pub use puchiprop_std as std;
 
 pub mod macros {
     pub use puchiprop_macro::*;

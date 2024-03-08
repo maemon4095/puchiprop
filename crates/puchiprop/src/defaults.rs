@@ -1,4 +1,4 @@
-use super::*;
+use puchiprop_core::*;
 use rand::SeedableRng;
 
 #[derive(Debug, Default)]
