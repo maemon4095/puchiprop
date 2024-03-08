@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 puchiprop_macro = { path = "../puchiprop_macro" }
+puchiprop_core = { path = "../puchiprop_core" }
 rand = { version = "0.8.5", features = ["small_rng"] }

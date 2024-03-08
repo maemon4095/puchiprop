@@ -1,4 +1,5 @@
 use super::*;
+use rand::SeedableRng;
 
 #[derive(Debug, Default)]
 pub struct DefaultTestPlanner;
