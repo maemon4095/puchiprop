@@ -115,10 +115,8 @@ mod test {
     use super::*;
     #[test]
     fn closure_type_assertion() {
-        let attr: TokenStream = "|r| r.gen(), options = { seed: 0, skip: 1 }"
-            .parse()
-            .unwrap();
-        let item: TokenStream = "fn test(x: usize) { }".parse().unwrap();
+        let attr = quote! {|r| r.gen(), options = { seed: 0, skip: 1 }};
+        let item = quote! { fn test(x: usize) { }};
 
         let result = prop_test(attr.to_token_stream(), item.to_token_stream());
 
@@ -128,10 +126,8 @@ mod test {
 
     #[test]
     fn closure_type_assertion_parenthesized() {
-        let attr: TokenStream = "(|r| r.gen()), options = { seed: 0, skip: 1 }"
-            .parse()
-            .unwrap();
-        let item: TokenStream = "fn test(x: usize) { }".parse().unwrap();
+        let attr = quote! { (|r| r.gen()), options = { seed: 0, skip: 1 } };
+        let item = quote! { fn test(x: usize) { }};
 
         let result = prop_test(attr.to_token_stream(), item.to_token_stream());
 
@@ -141,10 +137,19 @@ mod test {
 
     #[test]
     fn closure_type_assertion_braced() {
-        let attr: TokenStream = "{ let x = 1; |r| x * r.gen() }, options = { seed: 0, skip: 1 }"
-            .parse()
-            .unwrap();
-        let item: TokenStream = "fn test(x: usize) { }".parse().unwrap();
+        let attr = quote! { { let x = 1; |r| x * r.gen() }, options = { seed: 0, skip: 1 } };
+        let item = quote! { fn test(x: usize) { }};
+
+        let result = prop_test(attr.to_token_stream(), item.to_token_stream());
+
+        let pretty = prettyplease::unparse(&syn::parse_file(&result.to_string()).unwrap());
+        println!("{}", pretty);
+    }
+
+    #[test]
+    fn higher_rank_function_generator() {
+        let attr = quote! { array(|r| r.gen(), 0..10), options = { seed: 0, skip: 1 } };
+        let item = quote! { fn test(x: usize) { }};
 
         let result = prop_test(attr.to_token_stream(), item.to_token_stream());
 
