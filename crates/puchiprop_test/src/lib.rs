@@ -5,7 +5,7 @@ pub fn add(left: usize, right: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use puchiprop::prelude::*;
+    use puchiprop::{helper::genfn, prelude::*};
     use rand::Rng;
 
     #[prop_test(|rng| (rng.gen_range(0..100), rng.gen_range(0..100)), options = { seed: 8274166976581544106, skip: 6 })]
@@ -21,17 +21,17 @@ mod tests {
     where
         G: TestCaseGenerator,
     {
-        move |rng: &mut dyn rand::RngCore| {
+        genfn(move |rng| {
             let len = rng.gen_range(len.clone());
             let mut buf = Vec::with_capacity(len);
             for _ in 0..len {
                 buf.push(g.generate(rng));
             }
             buf
-        }
+        })
     }
 
-    #[prop_test(array(|r: &mut dyn rand::RngCore| r.gen(), 0..10))]
+    #[prop_test(array(genfn(|r| r.gen()), 0..10))]
     fn takes_array(_items: Vec<usize>) {}
 
     #[prop_test(|_| A)]

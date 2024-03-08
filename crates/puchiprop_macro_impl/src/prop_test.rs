@@ -5,10 +5,6 @@ use args::PropetyTestArgs;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
 
-static DEFAULT_PLANNER: &'static str = "::puchiprop::defaults::DefaultTestPlanner::default()";
-static INTERNAL_REPORT_ERROR: &'static str = "::puchiprop::__internal::report_error";
-static INTERNAL_ASSERT_CLOSURE_TYPE: &'static str = "::puchiprop::__internal::assert_closure_type";
-
 pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args: PropetyTestArgs = match syn::parse2(attr) {
         Ok(e) => e,
@@ -39,12 +35,12 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
     let planner = args
         .planner
         .map(|e| e.into_token_stream())
-        .unwrap_or_else(|| DEFAULT_PLANNER.parse().unwrap());
+        .unwrap_or_else(|| quote!(::puchiprop::defaults::DefaultTestPlanner::default()));
 
     let option_keys = args.options.keys();
     let option_values = args.options.values();
 
-    let closure_type_assertion: TokenStream = INTERNAL_ASSERT_CLOSURE_TYPE.parse().unwrap();
+    let closure_type_assertion = quote!(::puchiprop::helper::genfn);
 
     let generator = {
         let gen = &args.generator;
@@ -57,7 +53,7 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
-    let report_error: TokenStream = INTERNAL_REPORT_ERROR.parse().unwrap();
+    let report_error = quote!(::puchiprop::__internal::report_error);
 
     quote! {
         #[test]

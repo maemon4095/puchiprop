@@ -20,6 +20,7 @@
 #[doc(hidden)]
 pub mod __internal;
 pub mod defaults;
+pub mod helper;
 
 use rand::{RngCore, SeedableRng};
 use std::fmt::{Debug, Display};
@@ -60,7 +61,7 @@ pub trait TestPlanStateReporter {
 }
 
 pub mod macros {
-    pub use puchiprop_macro::prop_test;
+    pub use puchiprop_macro::*;
 }
 
 pub mod prelude {

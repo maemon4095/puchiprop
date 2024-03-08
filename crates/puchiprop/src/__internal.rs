@@ -42,13 +42,3 @@ pub fn report_error<T: Debug>(_testname: &str, test_case: &str, plan: &impl Test
     eprintln!("---- test plan state ----");
     eprintln!("{}", r);
 }
-
-/// type inference helper;
-/// inference failed the example code below
-/// ```
-/// let gen = |rng| ();
-/// let plan = planner.plan(&options, gen);
-/// ```
-pub fn assert_closure_type<T, F: for<'a> Fn(&'a mut dyn rand::RngCore) -> T>(f: F) -> F {
-    f
-}
