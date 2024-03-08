@@ -45,14 +45,17 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
     let option_keys = args.options.keys();
     let option_values = args.options.values();
 
-    let generator = match args.generator {
-        syn::Expr::Closure(e) => {
-            let closure_type_assertion: TokenStream = INTERNAL_ASSERT_CLOSURE_TYPE.parse().unwrap();
+    let closure_type_assertion: TokenStream = INTERNAL_ASSERT_CLOSURE_TYPE.parse().unwrap();
+
+    let generator = {
+        let gen = &args.generator;
+        if need_type_assertion(gen) {
             quote! {
-                #closure_type_assertion(#e)
+                #closure_type_assertion(#gen)
             }
+        } else {
+            gen.to_token_stream()
         }
-        e => e.to_token_stream(),
     };
 
     let report_error: TokenStream = INTERNAL_REPORT_ERROR.parse().unwrap();
@@ -92,21 +95,56 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
     }
 }
 
+fn need_type_assertion(expr: &syn::Expr) -> bool {
+    match expr {
+        syn::Expr::Block(e) => {
+            if let Some(syn::Stmt::Expr(e, None)) = e.block.stmts.last() {
+                need_type_assertion(e)
+            } else {
+                false
+            }
+        }
+        syn::Expr::Closure(_) => true,
+        syn::Expr::Paren(e) => need_type_assertion(&e.expr),
+        _ => false,
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     #[test]
-    fn test() {
+    fn closure_type_assertion() {
         let attr: TokenStream = "|r| r.gen(), options = { seed: 0, skip: 1 }"
             .parse()
             .unwrap();
-        let item: TokenStream = r##"
-        fn test(x: usize) {
+        let item: TokenStream = "fn test(x: usize) { }".parse().unwrap();
 
-        }
-        "##
-        .parse()
-        .unwrap();
+        let result = prop_test(attr.to_token_stream(), item.to_token_stream());
+
+        let pretty = prettyplease::unparse(&syn::parse_file(&result.to_string()).unwrap());
+        println!("{}", pretty);
+    }
+
+    #[test]
+    fn closure_type_assertion_parenthesized() {
+        let attr: TokenStream = "(|r| r.gen()), options = { seed: 0, skip: 1 }"
+            .parse()
+            .unwrap();
+        let item: TokenStream = "fn test(x: usize) { }".parse().unwrap();
+
+        let result = prop_test(attr.to_token_stream(), item.to_token_stream());
+
+        let pretty = prettyplease::unparse(&syn::parse_file(&result.to_string()).unwrap());
+        println!("{}", pretty);
+    }
+
+    #[test]
+    fn closure_type_assertion_braced() {
+        let attr: TokenStream = "{ let x = 1; |r| x * r.gen() }, options = { seed: 0, skip: 1 }"
+            .parse()
+            .unwrap();
+        let item: TokenStream = "fn test(x: usize) { }".parse().unwrap();
 
         let result = prop_test(attr.to_token_stream(), item.to_token_stream());
 
