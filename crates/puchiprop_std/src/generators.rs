@@ -16,6 +16,7 @@ where
     }
 }
 
+#[derive(Debug)]
 pub struct Range<T: Debug + SampleUniform, R: SampleRange<T> + Clone> {
     range: R,
     marker: PhantomData<T>,
@@ -29,22 +30,23 @@ impl<T: Debug + SampleUniform, R: SampleRange<T> + Clone> TestCaseGenerator for 
     }
 }
 
-pub fn array<G, const N: usize>(generator: G) -> Array<G, N>
+pub fn array<G, const N: usize>(generators: [G; N]) -> Array<G, N>
 where
     G: TestCaseGenerator,
 {
-    Array { generator }
+    Array { generators }
 }
 
+#[derive(Debug)]
 pub struct Array<G: TestCaseGenerator, const N: usize> {
-    generator: G,
+    generators: [G; N],
 }
 
 impl<G: TestCaseGenerator, const N: usize> TestCaseGenerator for Array<G, N> {
     type TestCase = [G::TestCase; N];
 
     fn generate(&self, rng: &mut dyn RngCore) -> Self::TestCase {
-        std::array::from_fn(|_| self.generator.generate(rng))
+        std::array::from_fn(|i| self.generators[i].generate(rng))
     }
 }
 
@@ -56,6 +58,7 @@ where
     Vec { generator, len }
 }
 
+#[derive(Debug)]
 pub struct Vec<G, R>
 where
     G: TestCaseGenerator,
@@ -93,6 +96,7 @@ pub fn choice<G: TestCaseGenerator, A: AsRef<[G]>>(cases: A) -> Choice<G, A> {
     }
 }
 
+#[derive(Debug)]
 pub struct Choice<G, T>
 where
     G: TestCaseGenerator,
@@ -120,6 +124,7 @@ pub fn constant<T: Debug + Clone>(item: T) -> Constant<T> {
     Constant(item)
 }
 
+#[derive(Debug, Clone)]
 pub struct Constant<T: Debug + Clone>(T);
 impl<T: Debug + Clone> TestCaseGenerator for Constant<T> {
     type TestCase = T;
@@ -128,6 +133,44 @@ impl<T: Debug + Clone> TestCaseGenerator for Constant<T> {
         self.0.clone()
     }
 }
+
+pub fn zip<G0, G1>(generator0: G0, generator1: G1) -> Zip<G0, G1>
+where
+    G0: TestCaseGenerator,
+    G1: TestCaseGenerator,
+{
+    Zip(generator0, generator1)
+}
+
+#[derive(Debug)]
+pub struct Zip<G0, G1>(G0, G1)
+where
+    G0: TestCaseGenerator,
+    G1: TestCaseGenerator;
+
+impl<G0, G1> TestCaseGenerator for Zip<G0, G1>
+where
+    G0: TestCaseGenerator,
+    G1: TestCaseGenerator,
+{
+    type TestCase = (G0::TestCase, G1::TestCase);
+
+    fn generate(&self, rng: &mut dyn RngCore) -> Self::TestCase {
+        (self.0.generate(rng), self.1.generate(rng))
+    }
+}
+
+#[macro_export]
+macro_rules! tuple {
+    ($($e:expr),*) => {{
+        #[allow(unused_variables)]
+        move |rng: &mut dyn ::rand::RngCore| {
+            ($($e.generate(rng)),*)
+        }
+    }};
+}
+
+pub use tuple;
 
 #[cfg(test)]
 mod test {
@@ -182,22 +225,16 @@ mod test {
 
     #[test]
     fn test_array() {
-        test_array_n::<0>();
-        test_array_n::<1>();
-        test_array_n::<2>();
-        test_array_n::<4>();
-        test_array_n::<8>();
-        test_array_n::<16>();
-        test_array_n::<32>();
-        test_array_n::<64>();
-    }
-
-    fn test_array_n<const N: usize>() {
-        let g = array::<_, N>(constant(0));
-        let mut rng = SmallRng::from_entropy();
-        for _ in 0..10 {
-            let case = g.generate(&mut rng);
-            assert_eq!(case, [0; N])
+        cases! {
+            [
+                [], [0], [0, 0], [0, 0, 0], [0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            ] => |p| {
+                array(p.map(|e: usize| constant(e)))
+            } => |case, p| {
+                assert_eq!(case, p)
+            }
         }
     }
 
@@ -228,5 +265,44 @@ mod test {
                 assert!(case < p);
             }
         }
+    }
+
+    #[test]
+    fn test_zip() {
+        cases! {
+            [
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+            ] => |p| {
+                zip(constant(p), constant(p))
+            } => |case, p| {
+                assert_eq!(case, &(*p, *p))
+            }
+        }
+    }
+
+    macro_rules! test_tuple_n {
+        ($($e: expr),*) => {
+            let mut rng = rand::rngs::SmallRng::from_entropy();
+            test_tuple_n!(@acc rng; $($e,)*);
+        };
+        (@acc $rng: expr; $first: expr, $($e: expr,)* ) => {
+            test_tuple_n!(@test $rng; $first, $($e,)*);
+            test_tuple_n!(@acc $rng; $($e,)*);
+        };
+        (@acc $rng: expr;) => {
+            test_tuple_n!(@test $rng;);
+        };
+        (@test $rng: expr; $($e: expr,)*) => {
+            let g = tuple!($(constant($e)),*);
+            for _ in 0..10 {
+                let case = g.generate(&mut $rng);
+                assert_eq!(case, ($($e),*));
+            }
+        }
+    }
+
+    #[test]
+    fn test_tuple() {
+        test_tuple_n!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
     }
 }
