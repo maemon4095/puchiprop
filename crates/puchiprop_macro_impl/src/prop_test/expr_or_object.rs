@@ -1,4 +1,4 @@
-use syn::spanned::Spanned;
+use syn::{parse::discouraged::Speculative, spanned::Spanned};
 
 use crate::object::Object;
 
@@ -8,8 +8,12 @@ pub enum ExprOrObject {
 }
 impl syn::parse::Parse for ExprOrObject {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        match input.parse() {
-            Ok(e) => return Ok(ExprOrObject::Object(e)),
+        let fork = input.fork();
+        match fork.parse() {
+            Ok(e) => {
+                input.advance_to(&fork);
+                return Ok(ExprOrObject::Object(e));
+            }
             Err(_) => (),
         }
 
