@@ -33,6 +33,6 @@ pub mod macros {
 
 pub mod prelude {
     pub use crate::defaults::{DefaultTestPlanner, DefaultTestPlannerOptions};
-    pub use crate::*;
-    pub use macros::*;
+    pub use crate::macros::*;
+    pub use puchiprop_core::*;
 }
