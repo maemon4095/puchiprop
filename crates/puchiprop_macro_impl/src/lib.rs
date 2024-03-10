@@ -1,5 +1,4 @@
-mod attribute_args;
-mod object;
+mod association;
 mod prop_test;
 
 pub use prop_test::prop_test;

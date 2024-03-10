@@ -8,7 +8,8 @@ mod tests {
     use puchiprop::{helper::genfn, prelude::*};
     use rand::Rng;
 
-    #[prop_test(|rng| (rng.gen_range(0..100), rng.gen_range(0..100)), options = { seed: 8274166976581544106, skip: 6 })]
+    #[prop_test(|rng| (rng.gen_range(0..100), rng.gen_range(0..100)))]
+    #[test_options(seed = 8274166976581544106, skip = 6)]
     #[should_panic]
     fn it_works(a: usize, b: usize) {
         let result = add(a, b);
@@ -35,7 +36,7 @@ mod tests {
     #[prop_test(array(genfn(|r| r.gen()), 0..10))]
     fn takes_array(_items: Vec<usize>) {}
 
-    #[prop_test(|_| A)]
+    #[prop_test(|_| A, |_| A)]
     fn cannot_clone(_cannot_clone: A) {}
 
     #[derive(Debug)]

@@ -1,6 +1,6 @@
 [package]
 name = "puchiprop"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -10,7 +10,7 @@ default = ["cases"]
 cases = ["dep:puchiprop_cases"]
 
 [dependencies]
-puchiprop_macro = { path = "../puchiprop_macro" }
-puchiprop_core = { path = "../puchiprop_core" }
-puchiprop_cases = { path = "../puchiprop_cases", optional = true }
+puchiprop_macro = { workspace = true }
+puchiprop_core = { workspace = true }
+puchiprop_cases = { workspace = true, optional = true }
 rand = { workspace = true }

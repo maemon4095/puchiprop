@@ -1,6 +1,6 @@
 [package]
 name = "puchiprop_macro"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -8,4 +8,4 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-puchiprop_macro_impl = { path = "../puchiprop_macro_impl" }
+puchiprop_macro_impl = { workspace = true }

@@ -4,3 +4,7 @@ resolver = "2"
 
 [workspace.dependencies]
 rand = { version = "0.8.*", features = ["small_rng"] }
+puchiprop_macro = { path = "./crates/puchiprop_macro", version = "0.2.0" }
+puchiprop_core = { path = "./crates/puchiprop_core", version = "0.1.0" }
+puchiprop_cases = { path = "./crates/puchiprop_cases", version = "0.1.0" }
+puchiprop_macro_impl = { path = "./crates/puchiprop_macro_impl", version = "0.2.0" }

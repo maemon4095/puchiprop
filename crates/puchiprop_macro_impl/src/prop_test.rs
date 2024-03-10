@@ -1,21 +1,30 @@
-mod args;
-mod expr_or_object;
+mod generators;
+mod special_attributes;
+mod test_options;
 
-use args::PropetyTestArgs;
+use generators::Generators;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
 
+use crate::prop_test::special_attributes::separate_special_attributes;
+
 pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let args: PropetyTestArgs = match syn::parse2(attr) {
+    let generators: Generators = match syn::parse2(attr) {
         Ok(e) => e,
         Err(e) => return e.into_compile_error(),
     };
 
-    let (tester, attrs) = match syn::parse2(item) {
-        Ok(e) => separate_testing_attr(e),
+    let mut tester = match syn::parse2(item) {
+        Ok(e) => e,
         Err(e) => return e.into_compile_error(),
     };
 
+    let special_attributes = match separate_special_attributes(&mut tester) {
+        Ok(e) => e,
+        Err(e) => return e.into_compile_error(),
+    };
+
+    let attrs = special_attributes.should_panic.iter();
     let vis = &tester.vis;
     let ident = &tester.sig.ident;
     let ident_str = ident.to_string();
@@ -32,18 +41,23 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
-    let planner = args
-        .planner
+    let planner = special_attributes
+        .test_planner
         .map(|e| e.into_token_stream())
         .unwrap_or_else(|| quote!(::puchiprop::defaults::DefaultTestPlanner::default()));
 
-    let option_keys = args.options.keys();
-    let option_values = args.options.values();
+    let option_keys = special_attributes
+        .test_options
+        .iter()
+        .flat_map(|e| e.associations.iter().map(|e| &e.key));
+    let option_values = special_attributes
+        .test_options
+        .iter()
+        .flat_map(|e| e.associations.iter().map(|e| &e.value));
 
     let closure_type_assertion = quote!(::puchiprop::helper::genfn);
 
-    let generator = {
-        let gen = &args.generator;
+    let generators = generators.0.iter().map(|gen| {
         if needs_type_assertion(gen) {
             quote! {
                 #closure_type_assertion(#gen)
@@ -51,23 +65,12 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
         } else {
             gen.to_token_stream()
         }
-    };
+    });
 
     let report_error = quote!(::puchiprop::__internal::report_error);
 
-    quote! {
-        #[test]
-        #(#attrs)*
-        #vis fn #ident () {
-            #tester
-
-            let tester = #ident;
-            let planner = #planner;
-
-            #[allow(unused_mut)]
-            let mut options = planner.default_options();
-            #(options.#option_keys(#option_values);)*
-
+    let per_generator_tests = generators.map(|generator| {
+        quote! {
             let generator = #generator;
             let mut plan = planner.plan(&options, &generator);
             let mut current_case = String::new();
@@ -85,6 +88,25 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
                 #report_error(#ident_str, &current_case, &plan);
                 ::std::panic::resume_unwind(err);
             }
+        }
+    });
+
+    quote! {
+        #[test]
+        #(#attrs)*
+        #vis fn #ident () {
+            #tester
+
+            let tester = #ident;
+            let planner = #planner;
+            let options = {
+                #[allow(unused_mut)]
+                let mut options = planner.default_options();
+                #(options.#option_keys(#option_values);)*
+                options
+            };
+
+            #({#per_generator_tests})*
         }
     }
 }
@@ -104,31 +126,13 @@ fn needs_type_assertion(expr: &syn::Expr) -> bool {
     }
 }
 
-fn separate_testing_attr(mut itemfn: syn::ItemFn) -> (syn::ItemFn, Vec<syn::Attribute>) {
-    let mut idx = 0;
-    let mut attrs = itemfn.attrs;
-    let mut removed_attrs = Vec::new();
-    while idx < attrs.len() {
-        let ident = attrs[idx].path().get_ident();
-        match ident {
-            Some(e) if e == "should_panic" => {
-                removed_attrs.push(attrs.swap_remove(idx));
-            }
-            _ => idx += 1,
-        }
-    }
-    itemfn.attrs = attrs;
-
-    (itemfn, removed_attrs)
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
     #[test]
     fn closure_type_assertion() {
-        let attr = quote! {|r| r.gen(), options = { seed: 0, skip: 1 }};
-        let item = quote! { fn test(x: usize) { }};
+        let attr = quote! {|r| r.gen()};
+        let item = quote! { fn test(x: usize) { } };
 
         let result = prop_test(attr.to_token_stream(), item.to_token_stream());
 
@@ -138,8 +142,8 @@ mod test {
 
     #[test]
     fn closure_type_assertion_parenthesized() {
-        let attr = quote! { (|r| r.gen()), options = { seed: 0, skip: 1 } };
-        let item = quote! { fn test(x: usize) { }};
+        let attr = quote! { (|r| r.gen()) };
+        let item = quote! { fn test(x: usize) { } };
 
         let result = prop_test(attr.to_token_stream(), item.to_token_stream());
 
@@ -149,8 +153,8 @@ mod test {
 
     #[test]
     fn closure_type_assertion_braced() {
-        let attr = quote! { { let x = 1; |r| x * r.gen() }, options = { seed: 0, skip: 1 } };
-        let item = quote! { fn test(x: usize) { }};
+        let attr = quote! { { let x = 1; |r| x * r.gen() } };
+        let item = quote! { fn test(x: usize) { } };
 
         let result = prop_test(attr.to_token_stream(), item.to_token_stream());
 
@@ -160,7 +164,7 @@ mod test {
 
     #[test]
     fn higher_rank_function_generator() {
-        let attr = quote! { array(|r| r.gen(), 0..10), options = { seed: 0, skip: 1 } };
+        let attr = quote! { array(|r| r.gen(), 0..10) };
         let item = quote! { fn test(x: usize) { }};
 
         let result = prop_test(attr.to_token_stream(), item.to_token_stream());
@@ -183,8 +187,34 @@ mod test {
     }
 
     #[test]
-    fn planner() {
-        let attr = quote! { array(|r| r.gen(), 0..10), planner = create_planner() };
+    fn test_planner() {
+        let attr = quote! { array(|r| r.gen(), 0..10) };
+        let item = quote! {
+            #[test_planner = create_planner()]
+            fn test(x: usize) { }
+        };
+        let result = prop_test(attr.to_token_stream(), item.to_token_stream());
+
+        let pretty = prettyplease::unparse(&syn::parse_file(&result.to_string()).unwrap());
+        println!("{}", pretty);
+    }
+
+    #[test]
+    fn test_options() {
+        let attr = quote! { array(|r| r.gen(), 0..10) };
+        let item = quote! {
+            #[test_options(seed = 0, skip = 1)]
+            fn test(x: usize) { }
+        };
+        let result = prop_test(attr.to_token_stream(), item.to_token_stream());
+
+        let pretty = prettyplease::unparse(&syn::parse_file(&result.to_string()).unwrap());
+        println!("{}", pretty);
+    }
+
+    #[test]
+    fn multiple_generators() {
+        let attr = quote! { array(|r| r.gen(), 0..10), |r| r.gen() };
         let item = quote! { fn test(x: usize) { } };
         let result = prop_test(attr.to_token_stream(), item.to_token_stream());
 

@@ -2,15 +2,15 @@
 //! #[cfg(test)]
 //! mod test {
 //!     // multivariable function
-//!     #[property_test(|rng| (rng.gen(), rng.gen()), $planner = create_planner())]
+//!     #[property_test(|rng| (rng.gen(), rng.gen()))]
+//!     #[test_planner = create_planner()]
 //!     fn test(num: usize, arg: usize) {
 //!         // your test code here
 //!     }
-//! }
 //!
-//! #[property_tests(planner = create_planner())]
-//! mod test {
-//!     #[property_test(input_definition, seed = 0)]
+//!     #[property_test(input0, input1)]
+//!     #[test_options(seed = 0, skip = 3)]
+//!     #[should_panic]
 //!     fn test(num: usize) {
 //!         // your test code here
 //!     }
