@@ -44,7 +44,11 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
     let planner = special_attributes
         .test_planner
         .map(|e| e.into_token_stream())
-        .unwrap_or_else(|| quote!(::puchiprop::defaults::DefaultTestPlanner::default()));
+        .unwrap_or_else(|| {
+            quote!(
+                <::puchiprop::defaults::DefaultTestPlanner as ::std::default::Default>::default()
+            )
+        });
 
     let option_keys = special_attributes
         .test_options
