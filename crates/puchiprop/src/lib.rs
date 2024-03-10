@@ -24,8 +24,8 @@ pub mod helper;
 
 pub use puchiprop_core::*;
 
-#[cfg(feature = "std")]
-pub use puchiprop_std as std;
+#[cfg(feature = "cases")]
+pub use puchiprop_cases as cases;
 
 pub mod macros {
     pub use puchiprop_macro::*;
