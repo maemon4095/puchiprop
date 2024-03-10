@@ -39,6 +39,6 @@ pub fn report_error<T: Debug>(_testname: &str, test_case: &str, plan: &impl Test
     eprintln!("---- test case ----");
     eprintln!("{}", test_case);
 
-    eprintln!("---- test plan state ----");
+    eprintln!("---- test state ----");
     eprintln!("{}", r);
 }
