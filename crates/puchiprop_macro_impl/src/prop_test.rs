@@ -9,7 +9,7 @@ use quote::{format_ident, quote, ToTokens};
 use crate::prop_test::special_attributes::separate_special_attributes;
 
 pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let generators: Generators = match syn::parse2(attr) {
+    let Generators(mut generators) = match syn::parse2(attr) {
         Ok(e) => e,
         Err(e) => return e.into_compile_error(),
     };
@@ -59,21 +59,11 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
         .iter()
         .flat_map(|e| e.associations.iter().map(|e| &e.value));
 
-    let closure_type_assertion = quote!(::puchiprop::helper::genfn);
-
-    let generators = generators.0.iter().map(|gen| {
-        if needs_type_assertion(gen) {
-            quote! {
-                #closure_type_assertion(#gen)
-            }
-        } else {
-            gen.to_token_stream()
-        }
-    });
+    generators.iter_mut().for_each(|g| make_asserted(g));
 
     let report_error = quote!(::puchiprop::__internal::report_error);
 
-    let per_generator_tests = generators.map(|generator| {
+    let per_generator_tests = generators.iter().map(|generator| {
         quote! {
             let generator = #generator;
             let mut plan = planner.plan(&options, &generator);
@@ -115,18 +105,21 @@ pub fn prop_test(attr: TokenStream, item: TokenStream) -> TokenStream {
     }
 }
 
-fn needs_type_assertion(expr: &syn::Expr) -> bool {
+fn make_asserted(expr: &mut syn::Expr) {
     match expr {
-        syn::Expr::Block(e) => {
-            if let Some(syn::Stmt::Expr(e, None)) = e.block.stmts.last() {
-                needs_type_assertion(e)
-            } else {
-                false
+        syn::Expr::Block(block) => {
+            if let Some(syn::Stmt::Expr(e, None)) = block.block.stmts.last_mut() {
+                make_asserted(e);
             }
         }
-        syn::Expr::Closure(_) => true,
-        syn::Expr::Paren(e) => needs_type_assertion(&e.expr),
-        _ => false,
+        syn::Expr::Closure(func) => {
+            let asserted = syn::parse_quote! {
+                ::puchiprop::helper::genfn(#func)
+            };
+            *expr = asserted;
+        }
+        syn::Expr::Paren(e) => make_asserted(&mut e.expr),
+        _ => (),
     }
 }
 
