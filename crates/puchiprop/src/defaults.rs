@@ -57,10 +57,27 @@ struct DefaultTestPlan<I: Iterator> {
     iterator: I,
 }
 
+#[derive(Debug)]
+struct DefaultTestPlanState {
+    seed: u64,
+    index: usize,
+}
+
+impl std::fmt::Display for DefaultTestPlanState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "seed  = {}", self.seed)?;
+        writeln!(f, "index = {}", self.index)
+    }
+}
+
 impl<I: Iterator<Item = T>, T> TestPlan<T> for DefaultTestPlan<I> {
-    fn report_state(&self, f: &mut dyn TestPlanStateReporter) {
-        f.report("seed", &self.seed);
-        f.report("index", &(self.executed_test_count - 1));
+    type State = DefaultTestPlanState;
+
+    fn state(&self) -> Self::State {
+        DefaultTestPlanState {
+            seed: self.seed,
+            index: self.executed_test_count - 1,
+        }
     }
 }
 
